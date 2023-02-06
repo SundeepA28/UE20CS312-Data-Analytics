@@ -1,0 +1,181 @@
+---
+title: "UE20CS312 - Data Analytics - Worksheet 1a - Part 2 - EDA with R | ANOVA"
+subtitle: "PES University"
+author: "'SUNDEEP A, Dept. of CSE - PES1UG20CS445'"
+date: "2022-08-26"
+output: pdf_document
+urlcolor: blue
+editor_options:
+markdown:
+wrap: 72
+---
+
+# Part I. Exploratory Data Analysis with R
+
+## Book Club Marketing Dataset
+
+## Problems
+
+### Problem 1 (1 point)
+
+```{r}
+library(tidyverse)
+cbc_df <- read_csv("C:\\Users\\HP\\Desktop\\PESU\\SEM - 5\\PES1UG20CS445\\DA\\1_b\\CharlesBookClubDataset.csv")
+head(cbc_df)
+summary(cbc_df[c("M","F","R","FirstPurch","ChildBks","YouthBks","CookBks","DoItYBks","RefBks","ArtBks","GeogBks","ItalCook","ItalAtlas","ItalArt","Florence","Related Purchase","Yes_Florence","No_Florence")])
+sprintf("The standard Deviation of M data : %f",sd(cbc_df$M,na.rm = T))
+sprintf("The standard Deviation of F data : %f",sd(cbc_df$F,na.rm = T))
+sprintf("The standard Deviation of R data : %f",sd(cbc_df$R,na.rm = T))
+sprintf("The standard Deviation of FirstPurch data : %f",sd(cbc_df$FirstPurch))
+sprintf("The standard Deviation of ChildBks data : %f",sd(cbc_df$ChildBks))
+sprintf("The standard Deviation of YouthBks data : %f",sd(cbc_df$YouthBks))
+sprintf("The standard Deviation of CookBks data : %f",sd(cbc_df$CookBks))
+sprintf("The standard Deviation of DoItYBks data : %f",sd(cbc_df$DoItYBks))
+sprintf("The standard Deviation of RefBks data : %f",sd(cbc_df$RefBks))
+sprintf("The standard Deviation of ArtBks data : %f",sd(cbc_df$ArtBks))
+sprintf("The standard Deviation of GeogBks data : %f",sd(cbc_df$GeogBks))
+sprintf("The standard Deviation of ItalCook data : %f",sd(cbc_df$ItalCook))
+sprintf("The standard Deviation of ItalAtlas data : %f",sd(cbc_df$ItalAtlas))
+sprintf("The standard Deviation of ItalArt data : %f",sd(cbc_df$ItalArt))
+sprintf("The standard Deviation of Florence data : %f",sd(cbc_df$Florence))
+sprintf("The standard Deviation of Related Purchase data : %f",sd(cbc_df$`Related Purchase`))
+sprintf("The standard Deviation of Yes_Florence data : %f",sd(cbc_df$Yes_Florence))
+sprintf("The standard Deviation of NO_Florence data : %f",sd(cbc_df$No_Florence))
+print("Count per each column : ")
+print(colSums(!is.na(cbc_df)))
+print("Number of missing Values per column :")
+colSums(is.na(cbc_df))
+```
+
+### Problem 2 (2 points)
+
+```{r}
+hist(cbc_df$R)
+cbc_df$R[is.na(cbc_df$R)] <- median(cbc_df$R, na.rm = T)
+hist(cbc_df$R)
+hist(cbc_df$F)
+cbc_df$F[is.na(cbc_df$F)] <- median(cbc_df$F, na.rm = T)
+hist(cbc_df$F)
+hist(cbc_df$M)
+cbc_df$M[is.na(cbc_df$M)] <- mean(cbc_df$M, na.rm = T)
+hist(cbc_df$M)
+print("So we can observe that there are no missing values")
+colSums(is.na(cbc_df))
+```
+
+## Analysis:
+
+Since the Histogram of R dataset is Right Skewed, So we can replace the missing values with the **median** of the R data
+
+Similarly the Histogram of F dataset is Right Skewed, So we can replace the missing values with the **median** of the F data
+
+Finally the Histogram of the M dataset is normally distributed,So we can replace the missing Values with **mean** of the M data
+
+## Problem 3 (2 points)
+
+```{r}
+cbc_df$Mcode <- cut(cbc_df$M, breaks = 5)
+cbc_df$Rcode <- cut(cbc_df$R, breaks = 5)
+cbc_df$Fcode <- cut(cbc_df$F, breaks = 5)
+
+summary(cbc_df[c("Mcode","Rcode","Fcode")])
+
+```
+
+### Problem 4
+
+#### 4.1 Bar Graphs (1 point)
+
+```{r}
+hist(cbc_df$FirstPurch)
+numeric_Mcode=as.numeric(cbc_df$Mcode)
+numeric_Rcode=as.numeric(cbc_df$Rcode)
+numeric_Fcode=as.numeric(cbc_df$Fcode)
+hist(numeric_Mcode)
+hist(numeric_Fcode)
+hist(numeric_Rcode)
+```
+
+#### 4.2 Box Plot (1 point)
+
+```{r}
+cbc_df$Florence=factor(cbc_df$Florence, labels=c("TRUE","FALSE"))
+F_R_T=cbc_df$R[which(cbc_df$Florence=="TRUE")]
+F_R_F=cbc_df$R[which(cbc_df$Florence=="FALSE")]
+boxplot(F_R_T,F_R_F,horizontal = TRUE,xlab="R",ylab="Florence",names = c("TRUE","FALSE"))
+
+F_M_T=cbc_df$M[which(cbc_df$Florence=="TRUE")]
+F_M_F=cbc_df$M[which(cbc_df$Florence=="FALSE")]
+boxplot(F_M_T,F_M_F,horizontal = TRUE,xlab="M",ylab="Florence",names = c("TRUE","FALSE"))
+
+F_First_T=cbc_df$FirstPurch[which(cbc_df$Florence=="TRUE")]
+F_First_F=cbc_df$FirstPurch[which(cbc_df$Florence=="FALSE")]
+boxplot(F_First_T,F_First_F,horizontal = TRUE,xlab="FirstPurch",ylab="Florence",names = c("TRUE","FALSE"))
+```
+
+#### 4.3 Density Plot (1 point)
+
+```{r}
+plot(density(cbc_df$R),main="Recency")
+plot(density(cbc_df$F),main="Frequency")
+plot(density(cbc_df$M),main="Monetary")
+plot(density(cbc_df$FirstPurch),main="FirstPurch")
+
+```
+
+------------------------------------------------------------------------
+
+# Part II. ANOVA
+
+## Problems
+
+### Problem 1 (2 points)
+
+```{r}
+library(ggpubr)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(broom)
+library(car)
+
+data <- read.csv('C:\\Users\\HP\\Desktop\\PESU\\SEM - 5\\PES1UG20CS445\\DA\\1_b\\Scenario 1.csv')
+anova_1 <- aov(No.of.items ~ POI, data = data)
+summary(anova_1)
+```
+
+## Analysis:
+
+1.. Scully can use one-way ANOVA Test, because we are analyzing a single independent variable.
+
+2.. aov() is a function used by Scully for ANOVA in R programming
+
+3..NULL HYPOTHESIS : It states that the means are the same.
+
+ALTERNATE HYPOTHESIS : It states that the means of every group is different.
+
+Output: Since the P-Vaue is greater than alpha(5%).We accept the NULL Hypothesis, which means that there is no difference between the means .
+
+### Problem 2 (3 points)
+
+```{r}
+data=read.csv('C:\\Users\\HP\\Desktop\\PESU\\SEM - 5\\PES1UG20CS445\\DA\\1_b\\Scenario 2.csv')
+anova_2=aov(No.of.items ~ POI*Priority,data=data)
+summary(anova_2)
+```
+
+## Analysis:
+
+1.. We choose two-way ANOVA because there are two independent variables 2.. aov() function is used in R programming to find the AVOVA 3.. NULL HYPOTHESIS: the means are the same ALTERNATE HYPOTHESIS : the means are different ouput : Since the P-value is very less then the alpha(5%) value, we reject the NULL Hypothesis. 4..Global mean is not considered
+
+### Problem 3 (1 point)
+
+```{r}
+HSD=TukeyHSD(anova_2)
+HSD
+plot(HSD)
+```
+
+## Analysis:
+
+This test compares a set of means for the given category of data we observe that the pairs-- high-critical,low-critical and med-critical are insignificant(i.e. have a p-value \< 0.05)

@@ -1,0 +1,200 @@
+---
+title: "UE20CS312 - Data Analytics - Worksheet 2a - Simple Linear Regression"
+subtitle: "PES University"
+author: "'SUNDEEP A, Dept. of CSE - PES1UG20CS445'"
+date: "2022-09-06"
+output: pdf_document
+urlcolor: blue
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+## Simple Linear Regression
+
+Simple linear regression is a statistical technique for finding the
+existence of an association relationship between a dependent variable
+and an independent variable. Simple linear regression implies that there
+is only one independent variable in the model. Regression is one of the
+most important techniques in predictive analytics since many prediction
+problems are modeled using regression.Action Potentials in Dragons
+
+Brain cells, called neurons (diagram shown below), send information
+throughout the brain and body. The information is sent via
+electro-chemical signals known as action potentials that travel down the
+length of the neuron. These neurons are then triggered to release
+chemical messengers at synapses, called neurotransmitters, which help
+trigger action potentials in nearby cells, and so help spread the signal
+all over. An action potential travels down a neuron's axon in an ion
+cascade. (Source: [Khan
+Academy](https://www.khanacademy.org/test-prep/mcat/organ-systems/neuron-membrane-potentials/a/action-potential-velocity)).
+
+![Diagram of a neuron - Source: Khan Academy](neuron.png)
+
+In the imaginary land of Westeros, the once extinct dragons were spotted
+again. The maesters of the capital, King's Landing, were summoned to
+study the nervous systems of these dragons. They were curious about how
+such large beings were able to move around so quickly. They studied 67
+nerve bundles of two dragons and measured the **maximal conduction
+velocity** across fibers and the **axon diameter** of the largest fiber
+(Similar to the study conducted by Hursh in 1939). What they observed is
+stored on the [GitHub
+repository](https://github.com/Data-Analytics-UE20CS312/Unit-2-Worksheets/blob/main/2a%20-%20Simple%20Linear%20Regression/dragon_neurons.csv).
+
+**Data Dictionary**
+
+    axon_diameter: diameter of the axon in micrometers
+    conduction_velocity: conduction velocity of action potentials in meters per second
+
+### Points
+
+The problems in this worksheet are for a total of 10 points with each
+problem having a different weightage.
+
+-   *Problem 1*: 1 point
+-   *Problem 2*: 3 points
+-   *Problem 3*: 3 points
+-   *Problem 4*: 1 point
+-   *Problem 5*: 2 points
+
+### Data reading
+
+```{r csv}
+dragon_neurons <- read.csv('dragon_neurons.csv')
+head(dragon_neurons)
+```
+
+### Problem 1 (1 point)
+
+Find if a linear model is appropriate for representing the relationship
+between the conduction velocity (response variable) and axon diameter
+(explanatory variable) by finding the OLS solution. Print out the slope
+and the coefficient. Plot the OLS best-fit line of the model (Hint: use
+the `ggplot` library).
+
+```{r}
+#lm(dragon_neurons$conduction_velocity~dragon_neurons$axon_diameter)
+#plot(dragon_neurons$conduction_velocity,dragon_neurons$conduction_velocity)
+library(ggplot2)
+ggp <- ggplot(dragon_neurons, aes(dragon_neurons$conduction_velocity,dragon_neurons$axon_diameter)) +           
+  geom_point(color='red') + 
+  ggtitle("Conduction Velocity vs Axon Diameter") + labs(y = "Conduction Velocity", x = "Axon Diameter")
+ggp +stat_smooth(method = "lm",se= FALSE)
+
+model <- lm(dragon_neurons$conduction_velocity ~ dragon_neurons$axon_diameter, data=dragon_neurons)
+
+print("The co-efficients are : ")
+print(model)
+summary(model)
+
+```
+
+### Problem 2 (3 points)
+
+Plot the residuals of the model. Do the residuals look like white noise?
+If they do not, try to find a suitable functional form (hint: try
+transforming either x or y using natural-log or squares).
+
+```{r}
+
+residual= resid(model)
+plot(residual)
+qqnorm(residual)
+qqline(residual)
+print("The residuals don't look like White noise.")
+
+dragon_neurons$log_axon = log(dragon_neurons$axon_diameter)
+log_model = lm(dragon_neurons$conduction_velocity ~ log_axon, data = dragon_neurons)
+log_residuals =resid(log_model)
+plot(log_residuals)
+qqnorm(log_residuals)
+qqline(log_residuals)
+
+
+```
+
+**Reasoning:**
+
+From the initial Residuals data we can say that they don't look like
+White noise, We can infer this from the qqplot, since most of the data
+don't lie on the 45 degree line. So , we try to apply log function on
+axon_diameter parameter. After applying, we can see from the new results
+that most of the points lie on the 45 degree line in a qqplot.
+
+### Problem 3 (3 points)
+
+Using Mahalanobis distance as a metric, are there any potential outliers
+you notice? What are their Mahalanobis distances? Use the model that you
+decided on in the previous problem (Problem 2) as your regression model.
+Ensure that you plot the ellipse with a radius equal to the square root
+of the Chi-square value with 2 degrees of freedom and 0.95 probability.
+
+```{r}
+library(car)
+#here the data is conduction_velocity and log(axon_diameter) because we used that data in previous question.
+data=dragon_neurons[,c("log_axon","conduction_velocity")]
+data$mahalanobis_distance<-mahalanobis(data,colMeans(data),cov(data))
+#Finding the outliers
+outliers <- qchisq(p = 0.95 , df = 2)
+print(data[data$mahalanobis_distance > outliers, ])
+
+
+Chi_sqr  = qchisq(p = 0.95 , df = 2)
+# Square root of Chi-Square value
+ellipse_radius  = sqrt(Chi_sqr)
+ellipse <- car::ellipse(center = colMeans(data[, c("log_axon", "conduction_velocity")]), shape = cov(data[, c("log_axon", "conduction_velocity")]) , radius = ellipse_radius ,segments = 150 , draw = FALSE)
+ellipse <- as.data.frame(ellipse)
+colnames(ellipse) <- colnames(data[, c("log_axon", "conduction_velocity")])
+ggplot(data , aes(x = log_axon , y = conduction_velocity)) +
+       geom_point(size = 1.5) +
+       geom_polygon(data = ellipse , fill = "yellow" , color = "red" ,alpha = 0.5)+geom_text( aes(label = row.names(data)) , hjust = 1 , vjust = -1.5 ,size = 2.5 ) + ylab("Conduction Velocity of neurons") + xlab("log(Axon diameter)")
+
+```
+
+From the graph, we can see that there are 3 outliers. This is also
+verified from the mahalanobis distance
+
+### Problem 4 (1 point)
+
+What are the R-squared values of the initial linear model and the
+functional form chosen in Problem 2? What do you infer from this? (hint:
+use the `summary` function on the created linear models)
+
+```{r}
+print("The Summary of the original data")
+summary(model)
+print("The summary of the modified data(log of axon_diameter)")
+summary(log_model)
+```
+
+**Inference:**
+
+The R-squared value of the Original Data Model is 0.765. The R-squared
+value of the Modified Data Model is 0.813. In general, the higher the
+R-squared, the better the model fits your data. So , we can say that The
+Modified Data Model is a better fit for the Data.
+
+### Problem 5 (2 points)
+
+Using the same `summary` function as Problem 4, determine if there is a
+statistically significant linear relationship at a significance value of
+0.05 of the **overall model** chosen in Problem 2. What do you
+understand about the relationship between dragons' axon diameters and
+conduction velocity? (Hint: understand the values displayed in `summary`
+and search for the right data).
+
+```{r}
+summary(log_model)
+```
+
+### **Analysis:**
+
+**NULL Hypothesis:** There is no significant Linear Relationship between
+axon diameters and conduction Velocity.
+
+**Alternate Hypothesis:** There is a significant Linear Relationship
+between axon diameters and conduction Velocity.
+
+**Since the p value[2.2e-16] is very less than the significant value
+(0.05), Null hypothesis is rejected.Therefore there is a significant
+linear relationship between the axon diameters and conduction velocity**

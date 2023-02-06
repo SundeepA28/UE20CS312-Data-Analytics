@@ -1,0 +1,311 @@
+---
+title: "**UE20CS312 - Data Analytics**\n\n**Worksheet 2c - Logistic Regression**"
+subtitle: "PES University"
+author: "'SUNDEEP A, Dept. of CSE - PES1UG20CS445'"
+date: "2022-09-14"
+output: pdf_document
+urlcolor: blue
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+### Prerequisites
+
+To download the data required for this worksheet, visit this [Github
+link](https://github.com/Data-Analytics-UE20CS312/Unit-2-Worksheets/tree/main/2c%20-%20Logistic%20Regression).
+Use the following libraries and read the dataset:
+
+```{r import, message=FALSE, warning=FALSE, results=TRUE}
+library(tidyverse)
+library(InformationValue)
+char_preds <- read.csv('got_characters.csv')
+```
+
+# The Logit Model
+
+The linear regression techniques discussed so far are used to model the
+relationship between a quantitative response variable and one or more
+explanatory variables. When the response variable is categorical, other
+techniques are more suited to the task of classification.
+
+The **logit model**, or **logistic model** models the probability, $p$,
+that a dichotomous (binary), dependent variable takes on one of two
+possible outcomes. It achieves this by setting the natural logarithm of
+the odds of the response variable, called the *log-odds* or *logit*, as
+a linear function of the explanatory variables.
+
+$$Z_i = \text{log}\left( \frac{p}{1-p}\right) = \beta_0 + \beta_1x + ... + \beta_nx_n \space \text{ for } \space p \in (0,1)$$
+
+Here, $Z_i$ is the log-odds of the response variable taking on a value
+with probability $p$.
+
+**Logistic regression** is an algorithm that estimates the parameters,
+or coefficients, of the linear combination of the logit model. In this
+worksheet, we will classify a certain binary feature of a dataset using
+logistic regression.
+
+# A Song of Ice and Fire - GoT Character Dataset
+
+*A Song of Ice and Fire* by George RR Martin is a series of epic fantasy
+novels that is popularly known for its TV show adaptation, *Game of
+Thrones*. The show is well known for its vastly complicated political
+landscape, large number of characters, and its frequent character
+deaths.
+
+The given dataset contains comprehensive information on characters from
+the book series till the 5th book, *A Dance with Dragons*. The data was
+created by the team at [A Song of Ice and
+Data](https://got.show/machine-learning-algorithm-predicts-death-game-of-thrones)
+who scraped it from [the Wiki of Ice and
+Fire](http://awoiaf.westeros.org/).
+
+This worksheet will focus on using Logistic Regression to predict
+whether a character in the SoIaF world remains alive by the end of the
+5th book, which is captured by the feature `actual`.
+
+### Data Dictionary
+
+    actual - Whether the character is alive in the consequent books 
+            (0 if dead, 1 if alive)
+    name - Name of the character
+    title - Character's title
+    male - Gender of the character (1 if male, 0 otherwise)
+    culture - Culture the character is from
+    dateofBirth - Character's DoB
+    mother - Name of the character's mother
+    father - Name of the character's father
+    heir - Name of the character's heir
+    spouse - Name of the character's spouse
+    book1 - Whether the character appears in Book 1, Game of Thrones
+    book2 - Whether the character appears in Book 2, A Clash of Kings
+    book3 - Whether the character appears in Book 3, A Storm of Swords
+    book4 - Whether the character appears in Book 4, A Feast for Crows
+    book5 - Whether the character appears in Book 5, A Dance with Dragons
+    isAliveMother - Whether the character's mother is alive
+    isAliveFather - Whether the character's father is alive
+    isAliveHeir - Whether the character's heir is alive
+    isAliveSpouse - Whether the character's spouse is alive
+    isMarried - Whether the character is married
+    isNoble - Whether the character belongs to a noble family
+    boolDeadRelations - Whether one of the character's relations is dead
+    numDeadRelations - Count of the character's relations that are dead
+    isPopular - Whether the character is popular 
+    popularity - Score of the character's popularity
+
+## Points
+
+The problems for this part of the worksheet are for a total of 10
+points, with a non-uniform weightage.
+
+-   *Problem 1* : 1 point
+-   *Problem 2* : 2 points
+-   *Problem 3* : 2 points
+-   *Problem 4* : 3 points
+-   *Problem 5* : 2 points
+
+# Problems
+
+### Problem 1 (1 point)
+
+How many characters from the SoIaF world does this dataset contain
+information on? Calculate the percentage of missing data for each column
+of the dataset and print them out in descending order as a dataframe.
+
+```{r}
+char_preds <- read.csv('got_characters.csv')
+sprintf("The No of characters in the dataset : %d",length(char_preds$name))
+char_preds[char_preds == "" | char_preds == " "] <- NA
+#finding the percenatge of missinng values in each column and creating a dataframe for it
+sortedna<-data.frame(sort(colMeans(is.na(char_preds))*100,decreasing = TRUE))
+sortedna
+```
+
+### Problem 2 (2 points)
+
+#### Step 1
+
+What are the inferences you can draw from the output dataframe of the
+previous problem? How can we handle columns with extremely high
+proportions of missing data before moving on?
+
+*Hint:* Does missing data in a column tell you something about the
+target variable (`actual`)? If not, set a missing percentage threshold
+of 80%, deeming the column as having insufficient data, and drop the
+column.
+
+### **Inference:**
+
+since the main task of the dataset is to predict If a character will be
+Alive/Dead by the end of 5 Books.To find this , attributes like Mother,
+isAliveMother, Heir, isAliveHeir, Father, IsAliveFather, Spouse,
+IsAliveSpouse have very less importance and since Majority of the data
+in these Attributes is missing, We can just remove there columns.
+
+```{r}
+d <- c('mother','isAliveMother','heir','isAliveHeir','father','isAliveFather','spouse','isAliveSpouse')
+new_df = char_preds[,!(names(char_preds) %in% d)]
+names(new_df)#So here we can see that the above columns have been deleted
+```
+
+#### Step 2
+
+Impute missing data in the remaining numeric features with a reasonable
+statistic. Make sure you observe the distribution of the data in the
+columns to pick out a reasonable statistic. For categorical variables,
+convert the columns to numeric features. *Hint: Use the `unclass`
+function and impute missing categorical feature values with a `-1`.*
+
+```{r}
+hist(new_df$dateOfBirth)
+new_df$dateOfBirth[is.na(new_df$dateOfBirth)] <- median(new_df$dateOfBirth, na.rm = T)
+
+hist(new_df$age)
+new_df$age[is.na(new_df$age)] <- median(new_df$age, na.rm = T)
+
+
+new_df[c("name","title","culture","house")] <- lapply(new_df[c("name","title","culture","house")], as.factor)
+new_df[c("name","title","culture","house")] <- sapply(new_df[c("name","title","culture","house")], unclass)
+
+# Replace missing with -1
+new_df[is.na(new_df)] = -1
+
+```
+
+### Bonus
+
+After plotting the `age` column, do you notice any discrepancies in the
+graph? What do you think might have given rise to a such a distribution?
+
+**Inference:**
+
+After Plotting the **Age** column we can see that the data is
+Right-Skewed, which means that most of the character in the GOT are
+Youth. We possible reason might we Since people most of the time are
+busy fighting Wars. So, there are going to be lot of deaths. As a
+Result, very less people are 40+.
+
+So we are trying to replace the missing values with its **median..**
+
+### Problem 3 (2 points)
+
+#### Step 1: Check for Class Bias
+
+Ideally, the proportion of both classes of the target variable should be
+the same. Is this so in the case of the target variable in this dataset?
+
+```{r}
+sprintf("The proportion of characters who are dead are : %f",sum(new_df$actual==0)/length(new_df$actual))
+sprintf("The proportion of characters who are alive are : %f",sum(new_df$actual==1)/length(new_df$actual))
+
+#From the above data we can see that the proportion of data is not same in the target variable[actual].So we can say that the data is biased.
+```
+
+#### Step 2: Create Training and Test Samples
+
+Perform undersampling in case of a class bias in the dataset. Create
+train and test splits.
+
+*Hint: To create the training sample set, sample 70% of the class with
+lesser rows and sample the same number from the other class. Use the
+remaining rows from both classes to create the test split.*
+
+```{r}
+# Original distribution
+table(new_df$actual)
+
+# Create training data
+input_ones <- new_df[which(new_df$actual == 1), ]
+input_zeros <- new_df[which(new_df$actual == 0), ]  # all 0's
+set.seed(100)  
+
+# Sample from all alive characters
+input_ones_training_rows <- sample(1:nrow(input_ones), 0.7*nrow(input_zeros)) 
+# Sample from all dead characters
+input_zeros_training_rows <- sample(1:nrow(input_zeros), 0.7*nrow(input_zeros))  
+
+training_ones <- input_ones[input_ones_training_rows, ]  
+training_zeros <- input_zeros[input_zeros_training_rows, ]
+
+# Row bind both class dataframes
+trainingData <- rbind(training_ones, training_zeros)
+# Shuffle rows 
+trainingData <- trainingData[sample(1:nrow(trainingData)), ]
+
+# Create testing data
+test_ones <- input_ones[-input_ones_training_rows, ]
+test_zeros <- input_zeros[-input_zeros_training_rows, ]
+
+testData <- rbind(test_ones,test_zeros)
+
+testData <- testData[sample(1:nrow(testData)), ]
+
+
+#Create testing data for zeros and bind the dataframes as shown in the above lines 
+#testData is the variable that will store the dataframe after binding 
+
+#Check the distribution of classes in the splits
+table(trainingData$actual)
+table(testData$actual)
+```
+
+### Problem 4 (3 points)
+
+#### Step 1: Build the Logisitic Regression Model
+
+Train a logistic regression model to predict whether a character is dead
+by Book 5 (feature: `actual`) using the training split. Use the
+`summary` function to print the beta coefficients, p values and other
+statistics. Predict characters' deaths on the test split available.
+
+```{r}
+#Building a model
+logitmod <- glm(actual ~ .-S.No-dateOfBirth-name-X, 
+                family = binomial(link="logit"), data=trainingData)
+
+summary(logitmod)
+
+#Predict characters deaths on the test split available
+predicted <- plogis(predict(logitmod, testData))  # predicted scores
+head(predicted)#The default cutoff is 0.5
+
+```
+
+### Step 2: Decide on the Optimal Prediction Probability Cutoff
+
+The default cutoff prediction probability score is 0.5 or the ratio of
+1's and 0's in the training data. But sometimes, tuning the probability
+cutoff can improve the accuracy in both the training and test samples.
+Compute the optimal cutoff score (using the test split) that minimizes
+the misclassification error for the trained model.
+
+
+```{r}
+optCutOff <- optimalCutoff(testData$actual, predicted)[1] 
+sprintf("The optimal Cutoff is : %f",optCutOff)
+```
+
+### Problem 5 (2 points)
+
+Using the optimal cutoff probability, compute and print the following
+using the predictions on the test set:
+
+1.  Misclassification error
+2.  Confusion Matrix
+3.  Sensitivity
+4.  Specificity
+
+Plot the ROC Curve (Receiver Operating Characteristics Curve). What is
+the area under the curve?
+
+```{r}
+misClassError(testData$actual, predicted, threshold = optCutOff)
+confusionMatrix(testData$actual, predicted, threshold = optCutOff)
+sensitivity(testData$actual, predicted, threshold = optCutOff)
+specificity(testData$actual, predicted, threshold = optCutOff)
+
+#Plot the RoC curve and report the AUC
+plotROC(testData$actual, predicted)
+print("The area under the curve is : 0.7265")
+```
+
